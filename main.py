@@ -14,7 +14,8 @@ tenant_id = os.getenv('AZURE_TENANT_ID', '')
 client_id = os.getenv('AZURE_CLIENT_ID', '')
 client_secret = os.getenv('AZURE_CLIENT_SECRET', '')
 redirect_uri = 'http://localhost:5000/callback'
-scope = ['https://graph.microsoft.com/.default']
+#scope = ['User.Read','https://graph.microsoft.com/.default']
+scope = ["User.Read","openid","profile","offline_access"]
 token_url = f'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token'
 auth_url = f'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize'
 
@@ -28,11 +29,12 @@ def home():
 def login():
     url = auth_url + (
         f"?client_id={client_id}"
-        f"&response_type=code"
+        f"&response_type=code+id_token"
         f"&redirect_uri={redirect_uri}"
         #f"&response_mode=query"
         f"&response_mode=form_post"
         f"&scope={' '.join(scope)}"
+        f"&nonce=12345"
     )
     return redirect(url)
 
@@ -47,16 +49,20 @@ def callback():
         "redirect_uri": redirect_uri,
         "grant_type": "authorization_code"
     })
-    token_response = json.loads(response.content.decode('utf-8'))
-    for key, value in token_response.items():
-        print(f"{key}: {value}")
 
-    token_data = jwt.decode(token_response['access_token'], options={"verify_signature": False})
-    print("Decoded Access Token:")
-    for key, value in token_data.items():
-        print(f"{key}: {value}")
+    if response.status_code != 200:
+        return make_response(f"Error fetching token: {response.text}", 400)
+    else:
+        token_response = response.json()
 
-    return make_response("ok")
+        id_token = jwt.decode(token_response['id_token'], options={"verify_signature": False})
+        with open("id_token.json", "w") as f:
+            json.dump(id_token, f, indent=4)
+
+        access_token = jwt.decode(token_response['access_token'], options={"verify_signature": False})
+        with open("access_token.json", "w") as f:
+            json.dump(access_token, f, indent=4)
+        return make_response("ok")
 
 def main():
     app.run(debug=True)
