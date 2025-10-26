@@ -1,11 +1,14 @@
 from flask import ( 
     Flask,
     make_response,
+    url_for,
     request,
     redirect
 )
 import requests
+import json
 import os
+import jwt
 
 tenant_id = os.getenv('AZURE_TENANT_ID', '')
 client_id = os.getenv('AZURE_CLIENT_ID', '')
@@ -19,7 +22,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "Hello from oauth-test!"
+    return redirect(url_for("login"))
 
 @app.route("/login")
 def login():
@@ -43,7 +46,16 @@ def callback():
         "redirect_uri": redirect_uri,
         "grant_type": "authorization_code"
     })
-    return make_response(response.json())
+    token_response = json.loads(response.content.decode('utf-8'))
+    for key, value in token_response.items():
+        print(f"{key}: {value}")
+
+    token_data = jwt.decode(token_response['access_token'], options={"verify_signature": False})
+    print("Decoded Access Token:")
+    for key, value in token_data.items():
+        print(f"{key}: {value}")
+
+    return make_response("ok")
 
 def main():
     app.run(debug=True)
