@@ -30,14 +30,15 @@ def login():
         f"?client_id={client_id}"
         f"&response_type=code"
         f"&redirect_uri={redirect_uri}"
-        f"&response_mode=query"
+        #f"&response_mode=query"
+        f"&response_mode=form_post"
         f"&scope={' '.join(scope)}"
     )
     return redirect(url)
 
-@app.route("/callback")
+@app.route("/callback", methods=["POST"])
 def callback():
-    code = request.args.get("code")
+    code = request.form.get("code")
     # Exchange the authorization code for an access token
     response = requests.post(token_url, data={
         "client_id": client_id,
